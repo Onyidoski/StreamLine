@@ -1,0 +1,77 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// MULTI-TENANCY CORE
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  
+  users     User[]
+  leads     Lead[]
+  
+  @@map("workspaces")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+  CLIENT
+}
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String    // Hashed
+  fullName    String?
+  role        Role      @default(ADMIN)
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  
+  assignedLeads Lead[]
+  
+  createdAt   DateTime  @default(now())
+  
+  @@map("users")
+}
+
+// CRM / LEADS MODULE
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  CLOSED
+  REJECTED
+  CANCELED
+}
+
+model Lead {
+  id          String     @id @default(uuid())
+  firstName   String
+  lastName    String?
+  email       String
+  phone       String?
+  status      LeadStatus @default(NEW)
+  value       Decimal?   @db.Decimal(10, 2)
+  
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  
+  assignedToId String?
+  assignedTo   User?     @relation(fields: [assignedToId], references: [id])
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("leads")
+}
